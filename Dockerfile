@@ -1,33 +1,28 @@
-# Use the official Alpine image as a base
-FROM node:20-alpine
+# Use updated Alpine base image
+FROM node:20-alpine3.22
 
-# Set the working directory in the container
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json
+# Upgrade Alpine security packages
+RUN apk update && \
+    apk upgrade libcrypto3 libssl3
+
+# Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install production dependencies only
+RUN npm ci --omit=dev
 
-# Copy the rest of the application code
+# Copy application code
 COPY . .
 
-# Create a non-root user and group
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Create non-root user
+RUN addgroup -S appgroup && \
+    adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /usr/src/app
 
-# Change ownership of the application directory
-RUN chown -R appuser:appgroup /usr/src/app
-
-# Switch to the non-root user
 USER appuser
 
-# Expose the port the app runs on
 EXPOSE 3000
 
-# Add health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/ || exit 1
-
-# Define the command to run the app
 CMD ["node", "app.js"]
